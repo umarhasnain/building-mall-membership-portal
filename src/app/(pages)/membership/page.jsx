@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // ✅ Import Link
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import Swal from "sweetalert2"; // ✅ SweetAlert import
 import withReactContent from "sweetalert2-react-content";
+import Image from "next/image";
 
 const MySwal = withReactContent(Swal);
 
@@ -67,7 +69,6 @@ export default function MembershipPage() {
     setLoading(true);
 
     try {
-      // Create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -75,17 +76,14 @@ export default function MembershipPage() {
       );
       const user = userCredential.user;
 
-      // Generate unique Member ID
       const memberId = "TBM-" + Math.floor(1000 + Math.random() * 9000);
 
-      // Save member data to Firestore
       await setDoc(doc(db, "members", user.uid), {
         ...form,
         memberId,
-        points: 0, // initial points
+        points: 0,
       });
 
-      // SweetAlert success
       await MySwal.fire({
         icon: "success",
         title: "Membership Activated!",
@@ -107,16 +105,32 @@ export default function MembershipPage() {
   };
 
   return (
-    <div className="bg-gradient-to-r from-indigo-50 via-white to-purple-50 min-h-screen py-16 px-4">
+    <div className="bg-linear-to-r from-blue-50 via-white to-purple-50 min-h-screen py-16 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
+        {/* Logo at the Top */}
+      
+
+        <div className="text-center mb-12 flex justify-center items-center">
+            <div className="text-center mb-8">
+          <Link href="https://testing.bloopsdesign.com/Building%20Mall-2">
+            <Image
+            height={300}
+            width={300}
+              src="/logo.png" 
+              alt="Logo"
+              className="mx-auto h-50 w-auto cursor-pointer"
+            />
+          </Link>
+        </div>
+        <div>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
             Loyalty Membership Benefits
           </h1>
           <p className="text-lg md:text-xl text-gray-600">
             Members are served first and enjoy exclusive pricing, financing,
             transport discounts, and early access to off-lease buildings.
           </p>
+        </div>
         </div>
 
         <form
@@ -133,7 +147,7 @@ export default function MembershipPage() {
                 name="name"
                 placeholder="Full Name"
                 required
-                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none shadow-sm transition"
+                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
                 onChange={handleChange}
               />
               <input
@@ -141,7 +155,7 @@ export default function MembershipPage() {
                 type="email"
                 placeholder="Email Address"
                 required
-                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none shadow-sm transition"
+                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
                 onChange={handleChange}
               />
               <input
@@ -149,19 +163,19 @@ export default function MembershipPage() {
                 type="password"
                 placeholder="Create a Password"
                 required
-                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none shadow-sm transition"
+                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
                 onChange={handleChange}
               />
               <input
                 name="phone"
                 placeholder="Phone Number"
-                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none shadow-sm transition"
+                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
                 onChange={handleChange}
               />
               <input
                 name="city"
                 placeholder="City / State"
-                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none shadow-sm transition"
+                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
                 onChange={handleChange}
               />
             </div>
@@ -182,7 +196,7 @@ export default function MembershipPage() {
                   key={plan.value}
                   className={`cursor-pointer border rounded-2xl p-4 text-center transition transform hover:scale-105 ${
                     form.plan === plan.value
-                      ? "border-indigo-500 bg-indigo-50 shadow-lg"
+                      ? "border-blue-500 bg-blue-50 shadow-lg"
                       : "border-gray-300 hover:bg-gray-50"
                   }`}
                 >
@@ -209,14 +223,14 @@ export default function MembershipPage() {
               {interestsList.map((item) => (
                 <label
                   key={item}
-                  className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-indigo-50 transition"
+                  className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-blue-50 transition"
                 >
                   <input
                     type="checkbox"
                     name="interests"
                     value={item}
                     onChange={handleChange}
-                    className="w-4 h-4 text-indigo-500 border-gray-300 rounded focus:ring-2 focus:ring-indigo-400"
+                    className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-400"
                   />
                   <span className="text-gray-700 font-medium">{item}</span>
                 </label>
@@ -231,7 +245,7 @@ export default function MembershipPage() {
             </h2>
             <select
               name="usage"
-              className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none shadow-sm transition"
+              className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
               onChange={handleChange}
               required
             >
@@ -249,7 +263,7 @@ export default function MembershipPage() {
               type="checkbox"
               name="agree"
               onChange={handleChange}
-              className="w-5 h-5 rounded border-gray-300 focus:ring-2 focus:ring-indigo-400"
+              className="w-5 h-5 rounded border-gray-300 focus:ring-2 focus:ring-blue-400"
             />
             <p className="text-gray-600 text-sm">
               I understand the Loyalty Membership benefits and agree to the
@@ -261,14 +275,14 @@ export default function MembershipPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-2xl shadow-lg hover:from-indigo-600 hover:to-purple-600 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-linear-to-r from-[#7f5d2b] to-[#7f5d2b] text-white text-xl font-semibold rounded-2xl shadow-lg hover:from-blue-600 hover:to-blue-600 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating Membership..." : "Activate Membership"}
           </button>
 
           <p className="text-gray-600 text-sm text-center">
             Already have an account?{" "}
-            <a href="/login" className="text-indigo-600 font-medium hover:underline">
+            <a href="/login" className="text-blue-600 font-medium hover:underline">
               Log in
             </a>
           </p>
