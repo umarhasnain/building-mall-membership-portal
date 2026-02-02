@@ -1,130 +1,232 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
-import {
-  LayoutDashboard,
-  Users,
-  Crown,
-  Building2,
-  LogOut,
-  Settings,
-  CreditCard,
-} from "lucide-react";
 
-export default function DashboardLayout() {
+export default function DashboardPage() {
+  const router = useRouter();
+  const [member, setMember] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Points logic based on plan
+  const planPoints = {
+    annual: 2000,
+    monthly: 800,
+    representative: 0,
+  };
+
+  const planPrice = {
+    annual: "$720 / Year",
+    monthly: "$60 / Month",
+    representative: "Ask a Rep",
+  };
+
+  useEffect(() => {
+    let unsubscribeSnapshot;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const docRef = doc(db, "members", user.uid);
+
+        // Real-time listener
+        unsubscribeSnapshot = onSnapshot(docRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            let data = docSnap.data();
+
+            // Dynamic points update based on plan
+            const expectedPoints = planPoints[data.plan] || 0;
+            if (data.points !== expectedPoints) {
+              await updateDoc(docRef, { points: expectedPoints });
+              data.points = expectedPoints;
+            }
+
+            setMember(data);
+          } else {
+            alert("Member data not found!");
+            signOut(auth);
+            router.push("/membership");
+          }
+          setLoading(false);
+        });
+      } else {
+        router.push("/membership");
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
+  }, [router]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/membership");
+  };
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-r from-indigo-50 via-white to-purple-50">
+        <p className="text-gray-600 text-xl animate-pulse">Loading your membership...</p>
+      </div>
+    );
+
+  const benefits = [
+    "Exclusive pricing on off-lease buildings",
+    "12 months same-as-cash financing",
+    "Transport & setup discounts",
+    "Early access to refurbished structures",
+    "Earn points for referrals & feedback",
+    "Special member-only offers & events",
+  ];
+
+  const quickActions = [
+    { name: "Refer a Friend", color: "bg-indigo-500", hover: "hover:bg-indigo-600" },
+    { name: "Upgrade Plan", color: "bg-purple-500", hover: "hover:bg-purple-600" },
+    { name: "View Off-Lease Buildings", color: "bg-green-500", hover: "hover:bg-green-600" },
+  ];
+
   return (
-    <div className="min-h-screen flex bg-linear-to-br from-blue-950 to-[#7f5d2b] text-white">
-      {/* Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-white/10 p-6">
-        <h2 className="text-2xl font-bold mb-10">The Building Mall</h2>
-        <nav className="space-y-4">
-          <NavItem icon={<LayoutDashboard />} label="Dashboard" active />
-          <NavItem icon={<Building2 />} label="My Services" />
-          <NavItem icon={<Users />} label="Leads" />
-          <NavItem icon={<CreditCard />} label="Membership" />
-          <NavItem icon={<Settings />} label="Settings" />
-        </nav>
-        <div className="mt-auto">
-          <Button variant="outline" className="w-full flex gap-2">
-            <LogOut size={18} /> Logout
-          </Button>
+    <div className="min-h-screen bg-gradient-to-r from-indigo-50 via-white to-purple-50 py-12 px-4">
+      <div className="max-w-6xl mx-auto space-y-10">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900">
+              Welcome, {member?.name}!
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Membership ID:{" "}
+              <span className="font-medium text-indigo-700">{member?.memberId}</span>
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 text-white px-6 py-3 rounded-2xl shadow hover:bg-red-600 transition"
+          >
+            Logout
+          </button>
         </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8">
-        {/* Topbar */}
+        {/* Membership Status */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-between items-center mb-10"
+          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-6 md:gap-0"
         >
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-white/60">Welcome back, Verified Member</p>
+            <p className="text-gray-700 font-medium">Membership Plan</p>
+            <p className="mt-1 text-xl font-bold text-indigo-800">
+              {member?.plan ? member.plan.charAt(0).toUpperCase() + member.plan.slice(1) : "-"} (
+              {planPrice[member?.plan] || "-"})
+            </p>
           </div>
-          <Badge className="bg-gradient-to-r from-amber-400 to-yellow-500 text-black px-4 py-1">
-            Gold Member
-          </Badge>
+
+          <div>
+            <p className="text-gray-700 font-medium">Membership Status</p>
+            <p
+              className={`mt-1 text-xl font-bold ${
+                member?.plan === "representative"
+                  ? "text-yellow-500"
+                  : "text-green-600"
+              }`}
+            >
+              {member?.plan === "representative" ? "Pending Approval" : "Active"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-gray-700 font-medium">Points</p>
+            <p className="text-indigo-800 font-bold text-2xl">{member?.points || 0} pts</p>
+            <div className="w-48 h-3 bg-gray-200 rounded-full mt-1 overflow-hidden">
+              <div
+                className="h-3 bg-indigo-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min((member?.points / 2000) * 100, 100)}%` }}
+              ></div>
+            </div>
+          </div>
         </motion.div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <StatCard icon={<Users />} title="Active Clients" value="128" />
-          <StatCard icon={<Building2 />} title="Projects" value="42" />
-          <StatCard icon={<Crown />} title="Membership" value="Gold" />
-        </div>
+        {/* Interests */}
+        <motion.div
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200"
+        >
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Your Interests</h2>
+          <div className="flex flex-wrap gap-3">
+            {member?.interests?.length > 0 ? (
+              member.interests.map((i) => (
+                <span
+                  key={i}
+                  className="px-4 py-2 bg-purple-100 text-purple-800 font-medium rounded-full shadow-md hover:shadow-lg transition"
+                >
+                  {i}
+                </span>
+              ))
+            ) : (
+              <p className="text-gray-600">No interests selected.</p>
+            )}
+          </div>
+        </motion.div>
 
-        {/* Membership Card */}
-        <Card className="bg-white/5 border border-white/10 rounded-2xl mb-10">
-          <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div>
-              <h2 className="text-2xl font-semibold">Membership Status</h2>
-              <p className="text-white/60">Gold plan · expires in 18 days</p>
-              <Progress value={70} className="mt-4" />
-            </div>
-            <Button className="bg-gradient-to-r from-indigo-500 to-blue-600 px-8">
-              Upgrade Plan
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Benefits */}
+        <motion.div
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200"
+        >
+          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Loyalty Benefits</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            {benefits.map((b, idx) => (
+              <motion.div
+                key={idx}
+                whileHover={{ scale: 1.05 }}
+                className="p-4 border-l-4 border-indigo-500 rounded-xl bg-indigo-50 shadow-sm hover:shadow-md transition"
+              >
+                {b}
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
 
-        {/* Trust Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <TrustCard
-            title="Business Verified"
-            desc="Your documents have been successfully verified"
-          />
-          <TrustCard
-            title="Profile Strength"
-            desc="Complete your profile to get more leads"
-            progress={85}
-          />
-        </div>
-      </main>
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200"
+        >
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
+          <div className="flex flex-wrap gap-4">
+            {quickActions.map((action) => (
+              <motion.button
+                key={action.name}
+                whileHover={{ scale: 1.05 }}
+                className={`${action.color} ${action.hover} text-white font-semibold px-6 py-3 rounded-2xl shadow`}
+              >
+                {action.name}
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Contact / Support */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200 text-center"
+        >
+          <p className="text-gray-700">
+            Need help? Contact our support team at{" "}
+            <span className="text-indigo-600 font-medium">info@buildingmall.com</span>
+          </p>
+        </motion.div>
+      </div>
     </div>
-  );
-}
-
-function NavItem({ icon, label, active }) {
-  return (
-    <div
-      className={`flex items-center gap-3 px-4 py-2 rounded-xl cursor-pointer transition ${
-        active ? "bg-indigo-500/20 text-indigo-400" : "hover:bg-white/10"
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function StatCard({ icon, title, value }) {
-  return (
-    <Card className="bg-white/5 border border-white/10 rounded-2xl">
-      <CardContent className="p-6 flex items-center gap-4">
-        <div className="p-3 bg-indigo-500/20 rounded-xl">{icon}</div>
-        <div>
-          <p className="text-white/60">{title}</p>
-          <h3 className="text-2xl font-bold">{value}</h3>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function TrustCard({ title, desc, progress }) {
-  return (
-    <Card className="bg-white/5 border border-white/10 rounded-2xl">
-      <CardContent className="p-6">
-        <h3 className="text-xl font-semibold mb-1">{title}</h3>
-        <p className="text-white/60 mb-4">{desc}</p>
-        {progress && <Progress value={progress} />}
-      </CardContent>
-    </Card>
   );
 }
