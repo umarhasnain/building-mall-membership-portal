@@ -4,229 +4,183 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { motion } from "framer-motion";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { FaUser, FaStar, FaUsers, FaWallet, FaCheckCircle, FaCode } from "react-icons/fa";
+
+const MySwal = withReactContent(Swal);
 
 export default function DashboardPage() {
   const router = useRouter();
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Points logic based on plan
-  const planPoints = {
-    annual: 2000,
-    monthly: 800,
-    representative: 0,
-  };
+  const planPoints = { annual: 2000, monthly: 800, representative: 0 };
+  const planPrice = { annual: "$720 / Year", monthly: "$60 / Month", representative: "Ask a Rep" };
 
-  const planPrice = {
-    annual: "$720 / Year",
-    monthly: "$60 / Month",
-    representative: "Ask a Rep",
+  const getLevel = (refCount) => {
+    if (refCount >= 30) return "Platinum";
+    if (refCount >= 15) return "Gold";
+    if (refCount >= 5) return "Silver";
+    return "Starter";
   };
 
   useEffect(() => {
-    let unsubscribeSnapshot;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const docRef = doc(db, "members", user.uid);
-
-        // Real-time listener
-        unsubscribeSnapshot = onSnapshot(docRef, async (docSnap) => {
-          if (docSnap.exists()) {
-            let data = docSnap.data();
-
-            // Dynamic points update based on plan
-            const expectedPoints = planPoints[data.plan] || 0;
-            if (data.points !== expectedPoints) {
-              await updateDoc(docRef, { points: expectedPoints });
-              data.points = expectedPoints;
-            }
-
-            setMember(data);
-          } else {
-            alert("Member data not found!");
-            signOut(auth);
-            router.push("/membership");
-          }
-          setLoading(false);
-        });
-      } else {
+    let unsub;
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
         router.push("/membership");
-        setLoading(false);
+        return;
       }
+      const ref = doc(db, "members", user.uid);
+      unsub = onSnapshot(ref, (snap) => {
+        if (!snap.exists()) return;
+        setMember(snap.data());
+        setLoading(false);
+      });
     });
-
     return () => {
-      unsubscribeAuth();
-      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      unsubAuth();
+      if (unsub) unsub();
     };
   }, [router]);
+
+  const copyReferral = () => {
+    navigator.clipboard.writeText(member?.referralCode);
+    MySwal.fire({
+      icon: "success",
+      title: "Copied!",
+      text: "Referral code copied successfully",
+      timer: 1500,
+      showConfirmButton: false,
+    });
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/membership");
   };
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-r from-indigo-50 via-white to-purple-50">
-        <p className="text-gray-600 text-xl animate-pulse">Loading your membership...</p>
-      </div>
-    );
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <p className="text-gray-600 text-xl animate-pulse">Loading your dashboard...</p>
+    </div>
+  );
 
-  const benefits = [
-    "Exclusive pricing on off-lease buildings",
-    "12 months same-as-cash financing",
-    "Transport & setup discounts",
-    "Early access to refurbished structures",
-    "Earn points for referrals & feedback",
-    "Special member-only offers & events",
+  if (!member) return null;
+
+  const level = getLevel(member.referrals?.length || 0);
+  const chartData = [
+    { month: "Jan", referrals: 2 },
+    { month: "Feb", referrals: 5 },
+    { month: "Mar", referrals: 8 },
+    { month: "Apr", referrals: 3 },
   ];
-
-  const quickActions = [
-    { name: "Refer a Friend", color: "bg-indigo-500", hover: "hover:bg-indigo-600" },
-    { name: "Upgrade Plan", color: "bg-purple-500", hover: "hover:bg-purple-600" },
-    { name: "View Off-Lease Buildings", color: "bg-green-500", hover: "hover:bg-green-600" },
+  const leaderboard = [
+    { name: "John", refs: 25 },
+    { name: "Emma", refs: 18 },
+    { name: member.name, refs: member.referrals?.length || 0 },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-indigo-50 via-white to-purple-50 py-12 px-4">
-      <div className="max-w-6xl mx-auto space-y-10">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900">
-              Welcome, {member?.name}!
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Membership ID:{" "}
-              <span className="font-medium text-indigo-700">{member?.memberId}</span>
-            </p>
+    <div className="min-h-screen bg-linear-to-br from-indigo-50 via-white to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-10">
+
+        {/* HEADER */}
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <FaUser size={50} className="text-indigo-600"/>
+            <div>
+              <h1 className="text-4xl font-extrabold text-gray-900">Welcome, {member.name}</h1>
+              <p className="text-gray-600">Member ID: <span className="font-semibold text-indigo-700">{member.memberId}</span></p>
+              <p className="text-sm text-purple-600 font-semibold mt-1">Level: {level}</p>
+            </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 text-white px-6 py-3 rounded-2xl shadow hover:bg-red-600 transition"
-          >
+          <button onClick={handleLogout} className="bg-linear-to-r from-[#7f5d2b] to-[#7f5d2b] text-white  px-6 py-3 rounded-2xl shadow hover:bg-blue-600 transition">
             Logout
           </button>
         </div>
 
-        {/* Membership Status */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-6 md:gap-0"
-        >
-          <div>
-            <p className="text-gray-700 font-medium">Membership Plan</p>
-            <p className="mt-1 text-xl font-bold text-indigo-800">
-              {member?.plan ? member.plan.charAt(0).toUpperCase() + member.plan.slice(1) : "-"} (
-              {planPrice[member?.plan] || "-"})
-            </p>
-          </div>
+        {/* STATS CARDS */}
+        <div className="grid md:grid-cols-4 gap-6">
+          <StatCard title="Plan" value={member.plan} icon={<FaStar size={30} className="text-yellow-500"/>}/>
+          <StatCard title="Points" value={`${member.points || 0} pts`} icon={<FaStar size={30} className="text-indigo-500"/>}/>
+          <StatCard title="Referrals" value={member.referrals?.length || 0} icon={<FaUsers size={30} className="text-green-500"/>}/>
+          <StatCard title="Wallet" value={`$${member.wallet?.balance || 0}`} icon={<FaWallet size={30} className="text-purple-500"/>}/>
+        </div>
 
-          <div>
-            <p className="text-gray-700 font-medium">Membership Status</p>
-            <p
-              className={`mt-1 text-xl font-bold ${
-                member?.plan === "representative"
-                  ? "text-yellow-500"
-                  : "text-green-600"
-              }`}
-            >
-              {member?.plan === "representative" ? "Pending Approval" : "Active"}
-            </p>
+        {/* REFERRAL CARD */}
+        <motion.div whileHover={{ scale: 1.02 }} className="bg-white p-6 rounded-3xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <FaCode className="text-purple-600" size={20}/>
+            <h2 className="text-xl font-bold mb-0">Referral Program</h2> 
           </div>
-
-          <div>
-            <p className="text-gray-700 font-medium">Points</p>
-            <p className="text-indigo-800 font-bold text-2xl">{member?.points || 0} pts</p>
-            <div className="w-48 h-3 bg-gray-200 rounded-full mt-1 overflow-hidden">
-              <div
-                className="h-3 bg-indigo-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min((member?.points / 2000) * 100, 100)}%` }}
-              ></div>
-            </div>
+             <p className="text-gray-700">Share your referral code and earn points!</p>
+          <div className="flex gap-3 flex-wrap">
+            <span className="bg-purple-100 px-4 py-2 rounded-xl font-bold">{member.referralCode}</span>
+            <button onClick={copyReferral} className="bg-linear-to-r from-[#7f5d2b] to-[#7f5d2b] text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition">Copy Code</button>
           </div>
         </motion.div>
 
-        {/* Interests */}
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200"
-        >
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Your Interests</h2>
-          <div className="flex flex-wrap gap-3">
-            {member?.interests?.length > 0 ? (
-              member.interests.map((i) => (
-                <span
-                  key={i}
-                  className="px-4 py-2 bg-purple-100 text-purple-800 font-medium rounded-full shadow-md hover:shadow-lg transition"
-                >
-                  {i}
-                </span>
-              ))
-            ) : (
-              <p className="text-gray-600">No interests selected.</p>
-            )}
-          </div>
-        </motion.div>
+        {/* ANALYTICS & LEADERBOARD */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <motion.div className="bg-white p-6 rounded-3xl shadow-lg">
+            <h2 className="font-bold mb-4 text-lg">Referral Analytics</h2>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={chartData}>
+                <XAxis dataKey="month"/>
+                <YAxis/>
+                <Tooltip/>
+                <Bar dataKey="referrals" fill="#6366F1"/>
+              </BarChart>
+            </ResponsiveContainer>
+          </motion.div>
 
-        {/* Benefits */}
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200"
-        >
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Loyalty Benefits</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            {benefits.map((b, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ scale: 1.05 }}
-                className="p-4 border-l-4 border-indigo-500 rounded-xl bg-indigo-50 shadow-sm hover:shadow-md transition"
-              >
-                {b}
-              </motion.div>
+          <motion.div className="bg-white p-6 rounded-3xl shadow-lg">
+            <h2 className="font-bold mb-4 text-lg">Leaderboard</h2>
+            {leaderboard.map((u, i) => (
+              <div key={i} className="flex justify-between p-3 border-b last:border-none">
+                <span>{u.name}</span>
+                <span className="font-bold">{u.refs}</span>
+              </div>
             ))}
-          </div>
+          </motion.div>
+        </div>
+
+        {/* BENEFITS */}
+        <motion.div className="bg-white p-6 rounded-3xl shadow-lg">
+          <h2 className="font-bold mb-4 text-lg">Membership Benefits</h2>
+          <ul className="grid md:grid-cols-2 gap-2">
+            <li className="flex items-center gap-2"><FaCheckCircle className="text-green-500"/> Exclusive pricing</li>
+            <li className="flex items-center gap-2"><FaCheckCircle className="text-green-500"/> Financing benefits</li>
+            <li className="flex items-center gap-2"><FaCheckCircle className="text-green-500"/> Referral rewards</li>
+            <li className="flex items-center gap-2"><FaCheckCircle className="text-green-500"/> Member only deals</li>
+          </ul>
         </motion.div>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200"
-        >
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
-          <div className="flex flex-wrap gap-4">
-            {quickActions.map((action) => (
-              <motion.button
-                key={action.name}
-                whileHover={{ scale: 1.05 }}
-                className={`${action.color} ${action.hover} text-white font-semibold px-6 py-3 rounded-2xl shadow`}
-              >
-                {action.name}
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Contact / Support */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-white shadow-2xl rounded-3xl p-6 border border-gray-200 text-center"
-        >
-          <p className="text-gray-700">
-            Need help? Contact our support team at{" "}
-            <span className="text-indigo-600 font-medium">info@buildingmall.com</span>
-          </p>
-        </motion.div>
       </div>
     </div>
+  );
+}
+
+/* 🔥 STAT CARD */
+function StatCard({ title, value, icon }) {
+  return (
+    <motion.div whileHover={{ scale: 1.05 }} className="bg-white p-6 rounded-3xl shadow-lg flex flex-col items-center text-center">
+      {icon}
+      <p className="text-gray-500 mt-2">{title}</p>
+      <p className="text-2xl font-bold mt-1">{value}</p>
+    </motion.div>
   );
 }

@@ -2,19 +2,30 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // ✅ Import Link
+import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import Swal from "sweetalert2"; // ✅ SweetAlert import
+import {
+  doc,
+  setDoc,
+  getDocs,
+  collection,
+  query,
+  where,
+  updateDoc,
+  arrayUnion
+} from "firebase/firestore";
+import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import Image from "next/image";
 
 const MySwal = withReactContent(Swal);
 
 export default function MembershipPage() {
+
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -24,8 +35,12 @@ export default function MembershipPage() {
     plan: "annual",
     interests: [],
     usage: "",
+    referralCodeInput: "", // ✅ added only
     agree: false,
   });
+
+  const generateReferralCode = () =>
+    Math.random().toString(36).substring(2, 8).toUpperCase();
 
   const interestsList = [
     "Storage Buildings",
@@ -57,6 +72,7 @@ export default function MembershipPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!form.agree) {
       MySwal.fire({
         icon: "warning",
@@ -74,14 +90,40 @@ export default function MembershipPage() {
         form.email,
         form.password
       );
-      const user = userCredential.user;
 
+      const user = userCredential.user;
       const memberId = "TBM-" + Math.floor(1000 + Math.random() * 9000);
+      const myReferralCode = generateReferralCode();
+
+      let referredBy = null;
+
+      // 🔥 Referral linking
+      if (form.referralCodeInput) {
+        const q = query(
+          collection(db, "members"),
+          where("referralCode", "==", form.referralCodeInput)
+        );
+
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const parent = snap.docs[0];
+          referredBy = parent.id;
+
+          await updateDoc(doc(db, "members", parent.id), {
+            referrals: arrayUnion(user.uid),
+          });
+        }
+      }
 
       await setDoc(doc(db, "members", user.uid), {
         ...form,
         memberId,
+        referralCode: myReferralCode,
+        referredBy,
+        referrals: [],
         points: 0,
+        createdAt: new Date(),
       });
 
       await MySwal.fire({
@@ -92,8 +134,8 @@ export default function MembershipPage() {
       });
 
       router.push("/dashboard");
+
     } catch (err) {
-      console.error(err);
       MySwal.fire({
         icon: "error",
         title: "Signup Failed",
@@ -104,33 +146,34 @@ export default function MembershipPage() {
     setLoading(false);
   };
 
+
   return (
     <div className="bg-linear-to-r from-blue-50 via-white to-purple-50 min-h-screen py-16 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Logo at the Top */}
-      
+
 
         <div className="text-center mb-12 flex justify-center items-center">
-            <div className="text-center mb-8">
-          <Link href="https://testing.bloopsdesign.com/Building%20Mall-2">
-            <Image
-            height={300}
-            width={300}
-              src="/logo.png" 
-              alt="Logo"
-              className="mx-auto h-50 w-auto cursor-pointer"
-            />
-          </Link>
-        </div>
-        <div>
+          <div className="text-center mb-8">
+            <Link href="https://testing.bloopsdesign.com/Building%20Mall-2">
+              <Image
+                height={300}
+                width={300}
+                src="/logo.png"
+                alt="Logo"
+                className="mx-auto h-50 w-auto cursor-pointer"
+              />
+            </Link>
+          </div>
+          <div>
             <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
-            Loyalty Membership Benefits
-          </h1>
-          <p className="text-lg md:text-xl text-gray-600">
-            Members are served first and enjoy exclusive pricing, financing,
-            transport discounts, and early access to off-lease buildings.
-          </p>
-        </div>
+              Loyalty Membership Benefits
+            </h1>
+            <p className="text-lg md:text-xl text-gray-600">
+              Members are served first and enjoy exclusive pricing, financing,
+              transport discounts, and early access to off-lease buildings.
+            </p>
+          </div>
         </div>
 
         <form
@@ -178,6 +221,13 @@ export default function MembershipPage() {
                 className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
                 onChange={handleChange}
               />
+              <input
+                name="referralCodeInput"
+                placeholder="Referral Code (Optional)"
+                className="p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm transition"
+                onChange={handleChange}
+              />
+
             </div>
           </div>
 
@@ -194,11 +244,10 @@ export default function MembershipPage() {
               ].map((plan) => (
                 <label
                   key={plan.value}
-                  className={`cursor-pointer border rounded-2xl p-4 text-center transition transform hover:scale-105 ${
-                    form.plan === plan.value
+                  className={`cursor-pointer border rounded-2xl p-4 text-center transition transform hover:scale-105 ${form.plan === plan.value
                       ? "border-blue-500 bg-blue-50 shadow-lg"
                       : "border-gray-300 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <input
                     type="radio"

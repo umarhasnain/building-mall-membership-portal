@@ -6,6 +6,8 @@ import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import Link from "next/link";
+import Image from "next/image";
 
 const MySwal = withReactContent(Swal);
 
@@ -75,10 +77,19 @@ export default function LoginPage() {
         onSubmit={handleLogin}
         className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 w-full max-w-md space-y-6 border border-gray-200"
       >
-        <h1 className="text-3xl font-extrabold text-gray-900 text-center">
+       
+        <Link href="https://testing.bloopsdesign.com/Building%20Mall-2">
+          <Image
+            height={300}
+            width={300}
+            src="/logo.png"
+            alt="Logo"
+            className="mx-auto h-50 w-auto cursor-pointer"
+          />
+        </Link>
+         <h1 className="text-3xl font-extrabold text-gray-900 text-center">
           Member Login
         </h1>
-
         <input
           type="email"
           name="email"
@@ -101,7 +112,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-2xl shadow-lg hover:from-indigo-600 hover:to-purple-600 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 bg-linear-to-r from-[#7f5d2b] to-[#7f5d2b] text-white font-semibold rounded-2xl shadow-lg hover:from-blue-600 hover:to-blue-600 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
@@ -110,13 +121,13 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleForgotPassword}
-            className="text-indigo-600 font-medium hover:underline"
+            className="text-blue-600 font-medium hover:underline"
           >
             Forgot Password?
           </button>
           <p className="text-gray-600">
             Don't have an account?{" "}
-            <a href="/membership" className="text-indigo-600 font-medium hover:underline">
+            <a href="/membership" className="text-blue-600 font-medium hover:underline">
               Sign Up
             </a>
           </p>
