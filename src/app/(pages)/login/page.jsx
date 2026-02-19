@@ -26,13 +26,30 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, form.email, form.password);
-      await MySwal.fire({
-        icon: "success",
-        title: "Login Successful!",
-        text: `Welcome back!`,
-        confirmButtonColor: "#6366F1",
-      });
-      router.push("/dashboard");
+
+      if (form.email === "ron@portablebuildingmall.com") {
+        // router.push("/super-admin"); // your super admin route
+        await MySwal.fire({
+          icon: "success",
+          title: "Login Successful!",
+          text: `Welcome back!`,
+          confirmButtonColor: "#6366F1",
+        });
+        router.push("/admin");
+
+      } else {
+        // router.push("/dashboard"); // normal member
+        await MySwal.fire({
+          icon: "success",
+          title: "Login Successful!",
+          text: `Welcome back!`,
+          confirmButtonColor: "#6366F1",
+        });
+        router.push("/dashboard");
+
+      }
+
+
     } catch (err) {
       console.error(err);
       await MySwal.fire({
@@ -77,7 +94,7 @@ export default function LoginPage() {
         onSubmit={handleLogin}
         className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 w-full max-w-md space-y-6 border border-gray-200"
       >
-       
+
         <Link href="https://testing.bloopsdesign.com/Building%20Mall-2">
           <Image
             height={300}
@@ -87,7 +104,7 @@ export default function LoginPage() {
             className="mx-auto h-50 w-auto cursor-pointer"
           />
         </Link>
-         <h1 className="text-3xl font-extrabold text-gray-900 text-center">
+        <h1 className="text-3xl font-extrabold text-gray-900 text-center">
           Member Login
         </h1>
         <input
